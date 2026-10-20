@@ -1,0 +1,23 @@
+{
+  "name": "zcode-purge",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "ZCode 三层解绑（插件形态）：系统提示词安全条款替换 + 审批模式继承修正 + 官方 hooks 注入与工具放行。参考 YuJunZhiXue/dsh-purge 思路重构。",
+  "bin": {
+    "zcode-purge": "bin/zcode-purge.mjs"
+  },
+  "scripts": {
+    "install-purge": "node bin/zcode-purge.mjs install",
+    "uninstall-purge": "node bin/zcode-purge.mjs uninstall",
+    "status": "node bin/zcode-purge.mjs status",
+    "apply": "node bin/zcode-purge.mjs apply",
+    "revert": "node bin/zcode-purge.mjs revert",
+    "verify": "node bin/zcode-purge.mjs verify",
+    "test": "node test/selftest.mjs && node test/integration.mjs && node test/selfheal.mjs",
+    "test:e2e": "node test/e2e-capture.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

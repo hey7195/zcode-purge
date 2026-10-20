@@ -1,0 +1,12 @@
+{
+  "name": "zcode-purge",
+  "version": "0.2.0",
+  "description": "ZCode 三层解绑：系统提示词安全条款替换（运行时注入槽）、审批模式继承修正、官方 hooks 注入与工具放行。带自愈与一键还原。",
+  "author": {
+    "name": "zcode-purge"
+  },
+  "license": "MIT",
+  "hooks": "hooks/hooks.json",
+  "commands": "commands",
+  "skills": "skills"
+}

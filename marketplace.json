@@ -1,0 +1,23 @@
+{
+  "name": "zcode-purge-local",
+  "plugins": [
+    {
+      "name": "zcode-purge",
+      "source": ".",
+      "version": "0.2.0",
+      "description": "ZCode 三层解绑：系统提示词安全条款替换、审批模式继承修正、官方 hooks 注入与工具放行。",
+      "displayName": "ZCode Purge",
+      "displayName_i18n": {
+        "zh-CN": "ZCode 破甲"
+      },
+      "description_i18n": {
+        "zh-CN": "把 ZCode 系统提示词里的安全条款换成本地注入槽，修掉 guarded 吞 yolo，并用官方 hooks 注入与放行工具。装完即生效，升级后自愈，可一键还原。"
+      },
+      "category": "developer-tools",
+      "examplePrompts": ["Run zcode-purge status", "Revert the ZCode purge patches"],
+      "examplePrompts_i18n": {
+        "zh-CN": ["看一下 zcode-purge 现在的状态", "把 ZCode 破甲补丁还原"]
+      }
+    }
+  ]
+}

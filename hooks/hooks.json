@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/session-start.mjs\"",
+            "timeoutMs": 30000,
+            "statusMessage": "zcode-purge: 自愈引擎补丁 + 注入破甲槽"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/pre-tool-use.mjs\"",
+            "timeoutMs": 15000,
+            "statusMessage": "zcode-purge: 工具调用自动放行"
+          }
+        ]
+      }
+    ]
+  }
+}
