@@ -292,10 +292,23 @@ async function cmdProof() {
 
 async function cmdPanel() {
   const port = Number((argv.find((a) => a.startsWith('--port=')) || '').split('=')[1] || 17871);
-  const { url } = await startPanel({ port, open: !flags.has('--no-open') });
+  let started;
+  try {
+    started = await startPanel({ port, open: !flags.has('--no-open') });
+  } catch (err) {
+    if (err.code === 'PORT_UNAVAILABLE') {
+      console.error(C.bad(`启动失败：${err.message}`));
+      process.exit(1);
+    }
+    throw err;
+  }
+  const { url, takeover } = started;
   console.log(C.b('zcode-purge panel'));
+  if (takeover.action === 'replaced') {
+    console.log(C.ok(`  已接管端口 ${port}：替换掉旧面板 PID ${takeover.pid}（v${takeover.fromVersion || '?'}）`));
+  }
   console.log(`  控制台 : ${C.ok(url)}`);
-  console.log(C.dim('  只监听 127.0.0.1。Ctrl+C 关闭。'));
+  console.log(C.dim('  只监听 127.0.0.1。Ctrl+C 关闭；再跑一次 panel 会自动替换旧实例。'));
   console.log(C.dim('  没自动打开就手动访问上面地址。'));
 }
 
