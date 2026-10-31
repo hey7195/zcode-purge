@@ -189,14 +189,23 @@ node bin/zcode-purge.mjs prompt --sync
 
 ### ZCode 升级之后
 
-不用管。下次开新会话时 `SessionStart` hook 会对比引擎指纹，发现被覆盖就自动重打。
+**主补丁不用管**：下次开新会话时 `SessionStart` hook 会对比引擎指纹，发现被覆盖就自动重打。
+
+**可选补丁看 `status`**：如果显示"跳过（锚点不符）"，先重跑一次 `install`（刷新插件 cache 和
+`~/.zcode/purge/` 里的运行时副本）—— 很多时候不是上游变了，是副本还停在旧版本。重装后仍不符
+才是上游改了结构，等插件更新锚点。
+
 手动确认：
 
 ```bash
+node bin/zcode-purge.mjs status        # 两个补丁都应是「已生效」
 node bin/zcode-purge.mjs proof --no-probe
 ```
 
 要立刻生效而不等新会话：`node bin/zcode-purge.mjs apply`，然后重启 ZCode。
+
+> 升级后备份文件会变成"上一代"。不用手动处理：`apply` 会用反向补丁反推当前这一代的原版并重建基线；
+> `revert` 本身也不依赖备份，而是把补丁就地改回原样。
 
 ### 权限模式
 
@@ -279,7 +288,8 @@ node bin/zcode-purge.mjs <命令>
 |---|---|---|
 | `找不到 ZCode 安装` | 探测不到 | 设 `ZCODE_HOME` 指向含 `resources\glm\zcode.cjs` 的目录 |
 | `install` 里 `plugins install` fail | ZCode CLI 起不来 | 手动确认：`$env:ELECTRON_RUN_AS_NODE=1; & "路径\ZCode.exe" "路径\resources\glm\zcode.cjs" plugins list` |
-| 补丁「跳过（锚点不符）」 | ZCode 改了文案 | `revert` 还原，等锚点更新，**不要手改引擎** |
+| 补丁「跳过（锚点不符）」 | ZCode 改了文案（主补丁），或插件 cache/运行时副本是旧代码（可选补丁） | 先重跑 `install` 刷新两处副本；仍不符说明上游改文案，`revert` 后在等锚点更新，**不要手改引擎** |
+| 备份「与当前引擎不是同一代」 | ZCode 升级过，备份还是上一代 | 正常现象：`apply` 会自动重建基线。`revert` 现在走反向补丁，不依赖备份，跨版本也安全 |
 | 补丁已生效但没变化 | 没重启 ZCode | 完全退出（含托盘）再启动 |
 | `proof` 里 system 段没注入 | 注入槽空 / 关了开关 | `prompt --sync`；检查 `config.json` 的 `sessionStartInject` |
 | `hookCount` 一直是 0 | 插件没启用 | `zcode plugins enable zcode-purge`，或客户端里手动启用 |
@@ -339,7 +349,7 @@ panel                   本地网页控制台
 status                  补丁 / hooks / 注入槽 / 插件 / 运行时副本
 apply [--with-hooks]    打补丁（--with-hooks 走手工模式）
 apply --no-optional     只打必需补丁
-revert                  用备份还原引擎
+revert                  还原引擎（反向补丁优先，不依赖备份）
 verify                  语法 / 槽 / hooks 自检
 prompt [--sync]         注入词路径 / 写进注入槽
 hooks install|remove    手工 hook 的装卸

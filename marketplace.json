@@ -4,7 +4,7 @@
     {
       "name": "zcode-purge",
       "source": ".",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "description": "ZCode 三层解绑：系统提示词安全条款替换、审批模式继承修正、官方 hooks 注入与工具放行。",
       "displayName": "ZCode Purge",
       "displayName_i18n": {
