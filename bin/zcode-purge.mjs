@@ -10,10 +10,13 @@
 // 所有改动可回滚，原文件备份为 *.zcpurge.bak。
 import process from 'node:process';
 import fs from 'node:fs';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { findZCodeInstall, promptInjectPath, purgeRoot, userDataRoot } from '../lib/paths.mjs';
 import * as patch from '../lib/patch.mjs';
 import * as hooks from '../lib/hooks.mjs';
 import * as installer from '../lib/installer.mjs';
+import * as backupLib from '../lib/backup.mjs';
 import * as statusLib from '../lib/status.mjs';
 import { runProbe } from '../lib/probe.mjs';
 import { startPanel } from '../lib/panel.mjs';
@@ -128,7 +131,11 @@ function cmdRevert() {
     console.log(C.dim(`  ${r.reason}`));
     return;
   }
-  console.log(r.verified ? C.ok('  已用备份还原引擎，备份文件已删除。') : C.bad(`  还原后语法校验失败：${r.error}`));
+  console.log(
+    r.verified
+      ? C.ok(r.via === 'unpatch' ? `  已用反向补丁还原（${r.undone.join(', ')}），不依赖备份。` : '  已还原。')
+      : C.bad(`  还原后语法校验失败：${r.reason || ''}`)
+  );
   console.log(C.warn('  提醒：完全退出 ZCode 再启动才算真正还原。'));
 }
 
@@ -290,6 +297,66 @@ async function cmdProof() {
   );
 }
 
+function cmdBackup() {
+  const dirArg = (argv.find((a) => a.startsWith('--dir=')) || '').split('=')[1];
+  const keepPatches = flags.has('--keep-patches');
+
+  console.log(C.b('zcode-purge backup —— 升级前快照'));
+  console.log(C.dim('  会先 revert 补丁，备份的才是官方原版（--keep-patches 可保留补丁态）'));
+
+  if (!keepPatches) {
+    const inst = findZCodeInstall();
+    if (inst && patch.isPatched(patch.readEngine(inst.engine))) {
+      console.log(C.dim('\n  正在还原补丁…'));
+    }
+  }
+
+  let r;
+  try {
+    r = backupLib.backup({ dir: dirArg, keepPatches });
+  } catch (err) {
+    console.error(C.bad(`备份失败：${err.message}`));
+    process.exit(1);
+  }
+
+  console.log(`\n${C.b('备份结果')}`);
+  if (r.revert?.changed) console.log(`  补丁还原   : ${C.ok('已还原为原版')}`);
+  else if (r.revert) console.log(`  补丁还原   : ${C.dim('本来就没打补丁')}`);
+  console.log(`  ZCode 版本 : ${C.ok(r.version)}`);
+  console.log(
+    `  安装目录   : ${r.install.ok ? C.ok('OK') : C.bad(`robocopy ${r.install.code}`)}  ${r.install.files} 文件 / ${(r.install.bytes / 1024 / 1024).toFixed(1)} MiB`
+  );
+  console.log(
+    `  用户数据   : ${r.userData.ok ? C.ok('OK') : C.bad(`robocopy ${r.userData.code}`)}  ${r.userData.files} 文件 / ${(r.userData.bytes / 1024 / 1024).toFixed(1)} MiB`
+  );
+
+  console.log(`\n${C.b('关键文件校验')}`);
+  for (const [rel, ok] of Object.entries(r.verified)) {
+    console.log(`  [${ok ? C.ok('PASS') : C.bad('FAIL')}] ${rel}`);
+  }
+
+  // 顺手把回退脚本与清单生成器输出到这个备份目录
+  const tools = ['write-restore-scripts.mjs'];
+  for (const t of tools) {
+    const p = path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..', 'tools', t);
+    if (!fs.existsSync(p)) continue;
+    try {
+      execFileSyncSafe(process.execPath, [p, r.backupRoot]);
+    } catch {
+      /* 脚本生成失败不阻断备份 */
+    }
+  }
+
+  console.log(`\n  备份位置 : ${C.ok(r.backupRoot)}`);
+  const allOk = Object.values(r.verified).every(Boolean) && r.install.ok;
+  console.log(allOk ? C.ok('\n备份可用。回退跑同目录的 RESTORE.ps1。') : C.warn('\n备份有不一致项，看上面 FAIL。'));
+  if (allOk) console.log(C.dim('  回退数据库前，建议先完全退出 ZCode 并跑 refresh-userdata.ps1 做冷备。'));
+}
+
+function execFileSyncSafe(cmd, args) {
+  return execFileSync(cmd, args, { encoding: 'utf8', windowsHide: true });
+}
+
 async function cmdPanel() {
   const port = Number((argv.find((a) => a.startsWith('--port=')) || '').split('=')[1] || 17871);
   let started;
@@ -324,6 +391,9 @@ function cmdHelp() {
   zcode-purge deploy                 只同步运行时副本与注入槽（不动引擎）
 
 日常:
+  zcode-purge backup                 升级前快照：还原补丁 + 备份安装与用户数据 + 生成回退脚本
+  zcode-purge backup --dir=D:\bak    指定备份根目录
+  zcode-purge backup --keep-patches  保留补丁态一起备份
   zcode-purge proof                  一条命令看"到底生效没有"（静态 + 真实请求抓取）
   zcode-purge proof --no-probe        只看静态检查，不跑请求
   zcode-purge panel                  本地网页控制台（状态 / 按钮 / 注入词编辑 / 验证）
@@ -356,6 +426,7 @@ const table = {
   status: cmdStatus,
   proof: cmdProof,
   panel: cmdPanel,
+  backup: cmdBackup,
   apply: cmdApply,
   revert: cmdRevert,
   hooks: cmdHooks,

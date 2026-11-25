@@ -193,6 +193,44 @@ node bin/zcode-purge.mjs prompt --sync
 
 改完立刻生效，不用重启进程、不用重打补丁。
 
+### 升级前先做快照（建议）
+
+```bash
+node bin/zcode-purge.mjs backup
+```
+
+按顺序做四件事：
+
+1. **先 revert 补丁** —— 备份的才是官方原版（`--keep-patches` 可保留补丁态）
+2. `robocopy /MIR` 快照安装目录到 `<ZCode 同级>/ZCode-backup/<版本>-<时间戳>/install`
+3. 快照 `~/.zcode` 到 `.../userdata`
+4. 校验 `ZCode.exe` / `resources/glm/zcode.cjs` / `resources/app.asar` 三个关键文件的 SHA-256，
+   并在备份目录生成 `RESTORE.ps1` 与 `refresh-userdata.ps1`
+
+输出：
+
+```
+ZCode 版本 : 3.17.1.9553
+安装目录   : OK  3137 文件 / 883.5 MiB
+用户数据   : OK  7192 文件 / 1164.5 MiB
+[PASS] ZCode.exe
+[PASS] resources\glm\zcode.cjs
+[PASS] resources\app.asar
+备份位置 : E:\ZCode-backup\3.17.1.9553-2026-11-25T10-08-21
+```
+
+**回退**（ZCode 完全退出后）：
+
+```powershell
+cd E:\ZCode-backup\<那一份>
+.\RESTORE.ps1                  # 只回程序
+.\RESTORE.ps1 -WithUserData    # 程序 + 配置/会话数据库
+.\RESTORE.ps1 -Force           # 自动结束 ZCode 进程，不询问
+```
+
+> 安装目录是冷备（退出后可完整还原）。**用户数据里的 `tasks-index.sqlite` 会被进程独占**，
+> 热备的副本不保证一致 —— 要回退数据库的话，先完全退出 ZCode 跑一次 `refresh-userdata.ps1` 做冷备。
+
 ### ZCode 升级之后
 
 **主补丁不用管**：下次开新会话时 `SessionStart` hook 会对比引擎指纹，发现被覆盖就自动重打。
@@ -296,6 +334,7 @@ node bin/zcode-purge.mjs <命令>
 | `install` 里 `plugins install` fail | ZCode CLI 起不来 | 手动确认：`$env:ELECTRON_RUN_AS_NODE=1; & "路径\ZCode.exe" "路径\resources\glm\zcode.cjs" plugins list` |
 | 补丁「跳过（锚点不符）」 | ZCode 改了文案（主补丁），或插件 cache/运行时副本是旧代码（可选补丁） | 先重跑 `install` 刷新两处副本；仍不符说明上游改文案，`revert` 后在等锚点更新，**不要手改引擎** |
 | 备份「与当前引擎不是同一代」 | ZCode 升级过，备份还是上一代 | 正常现象：`apply` 会自动重建基线。`revert` 现在走反向补丁，不依赖备份，跨版本也安全 |
+| 回退时 robocopy 报错、删不掉目录 | 用户数据里有 Windows 保留名文件（例如 `skills/xxx/nul`） | 备份里能正常存这个文件，但 PowerShell `Remove-Item` 删不动。用长路径：`cmd /c "del /f /q \\?\E:\path\nul"` 再删目录 |
 | 补丁已生效但没变化 | 没重启 ZCode | 完全退出（含托盘）再启动 |
 | `proof` 里 system 段没注入 | 注入槽空 / 关了开关 | `prompt --sync`；检查 `config.json` 的 `sessionStartInject` |
 | `hookCount` 一直是 0 | 插件没启用 | `zcode plugins enable zcode-purge`，或客户端里手动启用 |

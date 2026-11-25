@@ -204,10 +204,11 @@ node bin/zcode-purge.mjs status                    # 仓库内的同一份
 |---|---|
 | `install` / `uninstall` | 部署 / 全量移除 |
 | `deploy` | 只同步运行时副本与注入槽 |
+| `backup` | **升级前快照**：revert 补丁 + 备份安装与用户数据 + 生成回退脚本 |
 | `proof` | 一条命令验生效（静态 + 真实请求） |
 | `panel` | 本地网页控制台 |
 | `status` | 补丁 / hooks / 注入槽 / 插件 / 运行时副本 |
-| `apply` / `revert` | 打补丁 / 用备份还原 |
+| `apply` / `revert` | 打补丁 / 反向补丁还原 |
 | `prompt [--sync]` | 注入词路径 / 把 md 写进槽 |
 | `verify` | 语法 / 槽 / hooks 自检 |
 
